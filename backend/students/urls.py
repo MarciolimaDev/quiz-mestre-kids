@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import AlunoViewSet, AvatarViewSet
 
 
-router = DefaultRouter()
+router = DefaultRouter(trailing_slash='/?')
 router.register("alunos", AlunoViewSet, basename="aluno")
 router.register("avatares", AvatarViewSet, basename="avatar")
 

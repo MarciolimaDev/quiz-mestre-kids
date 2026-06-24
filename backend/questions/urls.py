@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import MateriaViewSet, PerguntaViewSet
 
 
-router = DefaultRouter()
+router = DefaultRouter(trailing_slash='/?')
 router.register("materias", MateriaViewSet, basename="materia")
 router.register("perguntas", PerguntaViewSet, basename="pergunta")
 
