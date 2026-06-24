@@ -220,6 +220,11 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 X_FRAME_OPTIONS = 'DENY'
 
+# Avoid automatic redirecting of URLs with/without trailing slash.
+# Vercel may normalize trailing slashes when proxying; disabling APPEND_SLASH
+# prevents POST requests from being redirected and losing their payload.
+APPEND_SLASH = False
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
