@@ -175,6 +175,17 @@ CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS") or [
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
+# If a single FRONTEND_URL is provided, add it to CORS and CSRF trusted origins
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+if FRONTEND_URL:
+    if FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+    # CSRF_TRUSTED_ORIGINS expects scheme (https://...) entries
+    if not CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = []
+    if FRONTEND_URL not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
+
 AUTH_USER_MODEL = 'accounts.User'
 
 AUTH_COOKIE_ACCESS = 'quiz_access'
