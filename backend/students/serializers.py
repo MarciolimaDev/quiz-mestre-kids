@@ -19,12 +19,14 @@ class AlunoSerializer(serializers.ModelSerializer):
     turma_label = serializers.CharField(source="turma.__str__", read_only=True)
     avatar_nome = serializers.CharField(source="avatar.nome", read_only=True)
     avatar_imagem = serializers.ImageField(source="avatar.imagem", read_only=True)
+    pontos = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Aluno
         fields = (
             "id",
             "nome",
+            "pontos",
             "apelido",
             "avatar",
             "avatar_nome",

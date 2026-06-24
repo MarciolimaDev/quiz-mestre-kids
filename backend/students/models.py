@@ -31,6 +31,7 @@ class Aluno(models.Model):
     )
     avatar_url = models.URLField(blank=True, verbose_name="URL do avatar")
     ativo = models.BooleanField(default=True)
+    pontos = models.IntegerField(default=0)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
