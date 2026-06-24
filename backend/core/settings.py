@@ -102,11 +102,14 @@ if database_url := os.getenv("DATABASE_URL"):
         import dj_database_url
     except ImportError as exc:
         raise ImproperlyConfigured("Instale dj-database-url para usar DATABASE_URL.") from exc
+    # Allow overriding connection age and health checks via environment
+    conn_max_age = int(os.getenv("DATABASE_CONN_MAX_AGE", "600"))
+    conn_health_checks = env_bool("DATABASE_CONN_HEALTH_CHECKS", True)
     DATABASES = {
         "default": dj_database_url.config(
             default=database_url,
-            conn_max_age=600,
-            conn_health_checks=True,
+            conn_max_age=conn_max_age,
+            conn_health_checks=conn_health_checks,
         )
     }
 else:
@@ -211,3 +214,34 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
 }
+
+
+# Cloud / Media storage (Cloudflare R2 / S3-compatible)
+# Use local filesystem in DEBUG; in production set USE_CLOUDFLARE_R2=true
+USE_CLOUDFLARE_R2 = env_bool("USE_CLOUDFLARE_R2", False)
+R2_ENDPOINT = os.getenv("R2_ENDPOINT")  # e.g. https://<account>.r2.cloudflarestorage.com
+R2_BUCKET = os.getenv("R2_BUCKET")  # e.g. quiz-kids
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION", "")
+AWS_S3_SIGNATURE_VERSION = os.getenv("AWS_S3_SIGNATURE_VERSION", "s3v4")
+
+# Default to filesystem storage for development
+DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+
+if USE_CLOUDFLARE_R2 or (R2_ENDPOINT and R2_BUCKET):
+    # django-storages S3 backend configuration
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    AWS_STORAGE_BUCKET_NAME = R2_BUCKET
+    AWS_S3_ENDPOINT_URL = R2_ENDPOINT
+    # boto3 uses these credentials when provided
+    # leave region empty if not required by R2
+    # allow overriding addressing style if needed (virtual or path)
+    AWS_S3_ADDRESSING_STYLE = os.getenv("AWS_S3_ADDRESSING_STYLE", "virtual")
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': os.getenv('AWS_S3_CACHE_CONTROL', 'max-age=86400'),
+    }
+
+    # Optional: public URL/domain override
+    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN')
+
