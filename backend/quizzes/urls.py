@@ -1,9 +1,9 @@
-from django.urls import path
+from django.urls import re_path
 
 from .views import QuizListCreateView, TurmaListCreateView
 
 
 urlpatterns = [
-    path("quizzes/", QuizListCreateView.as_view(), name="quiz-list-create"),
-    path("turmas/", TurmaListCreateView.as_view(), name="turma-list-create"),
+    re_path(r"^quizzes/?$", QuizListCreateView.as_view(), name="quiz-list-create"),
+    re_path(r"^turmas/?$", TurmaListCreateView.as_view(), name="turma-list-create"),
 ]
