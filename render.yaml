@@ -1,0 +1,35 @@
+databases:
+  - name: quizmestrekids-db
+    plan: free
+    databaseName: quizmestrekids
+    user: quizmestrekids
+
+services:
+  - type: web
+    name: quizmestrekids-api
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: bash build.sh
+    startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:$PORT
+    healthCheckPath: /health/
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quizmestrekids-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: MEDIA_ROOT
+        value: /opt/render/project/src/backend/media
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: WEB_CONCURRENCY
+        value: "4"
+    disk:
+      name: quizmestrekids-media
+      mountPath: /opt/render/project/src/backend/media
+      sizeGB: 1
