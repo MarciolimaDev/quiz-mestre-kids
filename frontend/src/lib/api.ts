@@ -1,6 +1,8 @@
 function apiBaseUrl() {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-  if (process.env.NODE_ENV === "production") return "/api";
+  // If running in production and NEXT_PUBLIC_API_URL is not provided,
+  // call the Render backend directly to avoid Vercel proxy/rewrite issues.
+  if (process.env.NODE_ENV === "production") return "https://quiz-mestre-kids.onrender.com/api";
   if (typeof window !== "undefined") {
     return `${window.location.protocol}//${window.location.hostname}:8000/api`;
   }
