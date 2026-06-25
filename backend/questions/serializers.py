@@ -1,9 +1,12 @@
+import json
+
 from django.db import transaction
 from django.db.models import Max
 from rest_framework import serializers
 
+from core.image_processing import image_to_webp
+
 from .models import Alternativa, Materia, Pergunta
-import json
 
 
 class MateriaSerializer(serializers.ModelSerializer):
@@ -46,13 +49,30 @@ class PerguntaSerializer(serializers.ModelSerializer):
         read_only_fields = ("criada_em",)
         validators = []
 
-    def validate_alternativas(self, alternativas):
-        # Accept alternativas as JSON string when multipart/form-data is used
+    def to_internal_value(self, data):
+        return super().to_internal_value(self._normalize_multipart_data(data))
+
+    def _normalize_multipart_data(self, data):
+        if not hasattr(data, "get"):
+            return data
+
+        normalized = {field: data.get(field) for field in self.Meta.fields if field in data}
+        alternativas = data.get("alternativas")
+
         if isinstance(alternativas, str):
             try:
-                alternativas = json.loads(alternativas)
-            except Exception:
-                raise serializers.ValidationError("Formato inválido para alternativas.")
+                normalized["alternativas"] = json.loads(alternativas)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError({"alternativas": "Formato inválido para alternativas."}) from exc
+        elif isinstance(alternativas, list) and len(alternativas) == 1 and isinstance(alternativas[0], str):
+            try:
+                normalized["alternativas"] = json.loads(alternativas[0])
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError({"alternativas": "Formato inválido para alternativas."}) from exc
+
+        return normalized
+
+    def validate_alternativas(self, alternativas):
         if len(alternativas) < 2:
             raise serializers.ValidationError("Cadastre pelo menos duas alternativas.")
         if sum(bool(item.get("correta")) for item in alternativas) != 1:
@@ -64,21 +84,20 @@ class PerguntaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("O texto das alternativas é obrigatório.")
         return alternativas
 
-    def to_internal_value(self, data):
-        # If alternativas was sent as a JSON string in form-data, parse it
-        alternativas = data.get("alternativas")
-        if isinstance(alternativas, str):
-            try:
-                parsed = json.loads(alternativas)
-                data._mutable = True if hasattr(data, "_mutable") else None
-                # For QueryDict (request.POST), assign parsed value
-                try:
-                    data.setlist("alternativas", parsed)
-                except Exception:
-                    data["alternativas"] = parsed
-            except Exception:
-                pass
-        return super().to_internal_value(data)
+    def validate_imagem(self, imagem):
+        if not imagem:
+            return imagem
+        if imagem.size > 8 * 1024 * 1024:
+            raise serializers.ValidationError("A imagem deve ter no máximo 8 MB.")
+        try:
+            return image_to_webp(
+                imagem,
+                prefix="pergunta",
+                max_size=(1280, 720),
+                quality=84,
+            )
+        except Exception as exc:
+            raise serializers.ValidationError("Não foi possível processar a imagem enviada.") from exc
 
     def validate(self, attrs):
         quiz = attrs.get("quiz", getattr(self.instance, "quiz", None))
