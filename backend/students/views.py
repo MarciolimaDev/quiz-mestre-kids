@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import filters, viewsets
 
 from .models import Aluno, Avatar
@@ -7,9 +9,19 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
+logger = logging.getLogger(__name__)
+
+
 class AvatarViewSet(viewsets.ModelViewSet):
     queryset = Avatar.objects.all()
     serializer_class = AvatarSerializer
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception:
+            logger.exception("Falha ao criar avatar e salvar imagem no storage.")
+            raise
 
 
 class AlunoViewSet(viewsets.ModelViewSet):
