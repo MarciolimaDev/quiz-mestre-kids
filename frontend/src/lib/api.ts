@@ -17,11 +17,7 @@ function errorMessage(data: unknown): string {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
-  // Normalize path: avoid trailing slash to prevent Vercel/Next redirect behavior.
-  // Keep root "/" untouched.
-  if (path !== "/") {
-    path = path.replace(/\/+$/, "");
-  }
+  path = path.startsWith("/") ? path : `/${path}`;
   const isFormData = init?.body instanceof FormData;
   const headers: Record<string, string> = { ...(init?.headers as Record<string, string> | undefined) };
   if (!isFormData) headers["Content-Type"] = "application/json";
