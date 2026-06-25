@@ -1,7 +1,8 @@
 import random
 
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, F, IntegerField, Sum, Value
+from django.db.models.functions import Coalesce, Lower
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -13,7 +14,7 @@ from quizzes.models import Quiz
 from students.models import Aluno
 
 from .models import ParticipanteSessao, RespostaAluno, SessaoQuiz
-from .services import _image_url, build_game_state, session_questions
+from .services import _image_url, build_game_state, first_participant, next_participant, session_questions
 
 
 def active_session():
@@ -60,9 +61,9 @@ class StartGameView(APIView):
             pergunta_iniciada_em=now,
             ordem_perguntas=[item.id for item in perguntas],
         )
-        for aluno in quiz.turma.alunos.filter(ativo=True).select_related("avatar"):
+        for aluno in quiz.turma.alunos.filter(ativo=True).select_related("avatar").order_by(Lower("nome"), "id"):
             ParticipanteSessao.objects.create(sessao=sessao, aluno=aluno)
-        primeiro = sessao.participantes.order_by("entrou_em").first()
+        primeiro = first_participant(sessao)
         if primeiro:
             sessao.aluno_atual = primeiro.aluno
             sessao.save(update_fields=("aluno_atual",))
@@ -126,23 +127,43 @@ class NextQuestionView(APIView):
             sessao.save(update_fields=("status", "finalizada_em"))
         else:
             sessao.pergunta_atual = perguntas[current_index + 1]
+            proximo_participante = next_participant(sessao)
+            if proximo_participante:
+                sessao.aluno_atual = proximo_participante.aluno
             sessao.pergunta_iniciada_em = timezone.now()
-            sessao.save(update_fields=("pergunta_atual", "pergunta_iniciada_em"))
+            sessao.save(update_fields=("pergunta_atual", "aluno_atual", "pergunta_iniciada_em"))
         return Response(build_game_state(request, sessao))
 
 
 class GeneralRankingView(APIView):
     def get(self, request):
         students = (
-            Aluno.objects.filter(participacoes__resultado__isnull=False)
+            Aluno.objects.filter(ativo=True)
             .select_related("avatar", "turma")
             .annotate(
-                pontuacao_total=Sum("participacoes__resultado__pontuacao"),
-                acertos_total=Sum("participacoes__resultado__acertos"),
-                erros_total=Sum("participacoes__resultado__erros"),
-                tempo_total=Sum("participacoes__resultado__tempo_gasto_segundos"),
+                pontuacao_quiz=Coalesce(
+                    Sum("participacoes__resultado__pontuacao"),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                acertos_total=Coalesce(
+                    Sum("participacoes__resultado__acertos"),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                erros_total=Coalesce(
+                    Sum("participacoes__resultado__erros"),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                tempo_total=Coalesce(
+                    Sum("participacoes__resultado__tempo_gasto_segundos"),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
                 rodadas=Count("participacoes__sessao", distinct=True),
             )
+            .annotate(pontuacao_total=F("pontos") + F("pontuacao_quiz"))
             .order_by("-pontuacao_total", "tempo_total", "nome")
         )
         return Response(

@@ -167,6 +167,7 @@ class GameApiTests(APITestCase):
         self.assertEqual(inicio.status_code, status.HTTP_201_CREATED, inicio.data)
         self.assertEqual(len(inicio.data["participantes"]), 2)
         self.assertEqual(inicio.data["pergunta"]["id"], self.pergunta1.id)
+        self.assertEqual(inicio.data["aluno_atual_id"], self.ana.id)
 
         selecao = self.client.post(
             "/api/jogo/selecionar-aluno/",
@@ -193,6 +194,7 @@ class GameApiTests(APITestCase):
         self.assertEqual(resposta.data["ranking"][0]["pontuacao"], 10)
         self.assertEqual(resposta.data["ranking"][0]["aluno_id"], self.beto.id)
         self.assertEqual(proxima.data["pergunta"]["id"], self.pergunta2.id)
+        self.assertEqual(proxima.data["aluno_atual_id"], self.ana.id)
 
         geral = self.client.get("/api/rankings/geral/")
         self.assertEqual(geral.status_code, status.HTTP_200_OK)

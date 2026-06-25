@@ -1,10 +1,11 @@
 from django.utils import timezone
+from django.db.models.functions import Lower
 from quizzes.models import Quiz
 
 from .models import SessaoQuiz
 
 
-QUESTION_TIME_SECONDS = 60
+QUESTION_TIME_SECONDS = 90
 
 
 def _image_url(request, aluno):
@@ -19,6 +20,32 @@ def session_questions(sessao):
         questions_by_id = {question.id: question for question in queryset.filter(id__in=sessao.ordem_perguntas)}
         return [questions_by_id[question_id] for question_id in sessao.ordem_perguntas if question_id in questions_by_id]
     return list(queryset.order_by("ordem", "id")[: sessao.quiz.quantidade_perguntas])
+
+
+def session_participants(sessao):
+    return list(
+        sessao.participantes.select_related("aluno__avatar", "resultado")
+        .order_by(Lower("aluno__nome"), "aluno__id")
+    )
+
+
+def first_participant(sessao):
+    return (
+        sessao.participantes.select_related("aluno")
+        .order_by(Lower("aluno__nome"), "aluno__id")
+        .first()
+    )
+
+
+def next_participant(sessao):
+    participantes = session_participants(sessao)
+    if not participantes:
+        return None
+    current_index = next(
+        (index for index, item in enumerate(participantes) if item.aluno_id == sessao.aluno_atual_id),
+        -1,
+    )
+    return participantes[(current_index + 1) % len(participantes)]
 
 
 def available_quizzes():
@@ -45,9 +72,7 @@ def build_game_state(request, sessao=None):
     if pergunta and pergunta.id not in {item.id for item in perguntas}:
         pergunta = None
 
-    participantes = list(
-        sessao.participantes.select_related("aluno__avatar", "resultado").all()
-    )
+    participantes = session_participants(sessao)
     selected = next(
         (item for item in participantes if item.aluno_id == sessao.aluno_atual_id),
         participantes[0] if participantes else None,

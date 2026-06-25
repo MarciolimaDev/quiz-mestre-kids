@@ -3,7 +3,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import User
-from quizzes.models import Turma
+from quizzes.models import Categoria, Quiz, Turma
+from results.models import ParticipanteSessao, Resultado, SessaoQuiz
 
 from .models import Aluno, Avatar
 
@@ -74,6 +75,28 @@ class AlunoApiTests(APITestCase):
 
         self.assertEqual(alunos.status_code, status.HTTP_200_OK)
         self.assertEqual(avatares.status_code, status.HTTP_200_OK)
+
+    def test_lista_aluno_com_pontuacao_total(self):
+        aluno = Aluno.objects.create(nome="Bia", turma=self.turma, pontos=3)
+        categoria = Categoria.objects.create(nome="Geral")
+        quiz = Quiz.objects.create(
+            titulo="Quiz",
+            categoria=categoria,
+            turma=self.turma,
+            tempo_limite_segundos=60,
+            quantidade_perguntas=1,
+            pontos_por_acerto=10,
+        )
+        sessao = SessaoQuiz.objects.create(quiz=quiz, turma=self.turma)
+        participante = ParticipanteSessao.objects.create(sessao=sessao, aluno=aluno)
+        Resultado.objects.filter(participante=participante).update(pontuacao=10)
+
+        response = self.client.get("/api/alunos/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["pontos"], 13)
+        self.assertEqual(response.data[0]["pontos_comportamento"], 3)
+        self.assertEqual(response.data[0]["pontos_quiz"], 10)
 
     def test_cria_turma_pela_api(self):
         response = self.client.post(

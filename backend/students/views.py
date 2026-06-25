@@ -1,5 +1,7 @@
 import logging
 
+from django.db.models import F, IntegerField, Sum, Value
+from django.db.models.functions import Coalesce
 from rest_framework import filters, viewsets
 
 from .models import Aluno, Avatar
@@ -31,7 +33,17 @@ class AlunoViewSet(viewsets.ModelViewSet):
     ordering_fields = ("nome", "criado_em")
 
     def get_queryset(self):
-        queryset = Aluno.objects.select_related("turma", "avatar")
+        queryset = (
+            Aluno.objects.select_related("turma", "avatar")
+            .annotate(
+                pontos_quiz=Coalesce(
+                    Sum("participacoes__resultado__pontuacao"),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+            )
+            .annotate(pontos_total=F("pontos") + F("pontos_quiz"))
+        )
         turma_id = self.request.query_params.get("turma")
         ativo = self.request.query_params.get("ativo")
         if turma_id:
@@ -51,4 +63,12 @@ class AlunoViewSet(viewsets.ModelViewSet):
             return Response({"detail": "delta inválido"}, status=status.HTTP_400_BAD_REQUEST)
         aluno.pontos = (aluno.pontos or 0) + delta
         aluno.save(update_fields=["pontos"])
-        return Response({"id": aluno.id, "pontos": aluno.pontos})
+        aluno = self.get_queryset().get(pk=aluno.pk)
+        return Response(
+            {
+                "id": aluno.id,
+                "pontos": aluno.pontos_total or 0,
+                "pontos_comportamento": aluno.pontos or 0,
+                "pontos_quiz": aluno.pontos_quiz or 0,
+            }
+        )

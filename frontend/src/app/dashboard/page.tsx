@@ -9,8 +9,16 @@ export const metadata: Metadata = {
 
 export default function DashboardPage() {
   return (
-    <>
-      <div className={styles.missionHeader}>
+    <div className={styles.overviewScene}>
+      <div aria-hidden="true" className={styles.overviewAnimatedBackground}>
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+
+      <div className={`${styles.missionHeader} ${styles.overviewHero}`}>
         <div>
           <h1>Visão geral</h1>
           <p>Resumo rápido do sistema e atalhos para as principais seções.</p>
@@ -18,15 +26,15 @@ export default function DashboardPage() {
       </div>
 
       <div className={styles.dashboardGrid}>
-        <section className={styles.panel} style={{ padding: 28 }}>
+        <section className={`${styles.panel} ${styles.overviewCard} ${styles.overviewPrimaryCard}`}>
           <h2>Resumo do sistema</h2>
-          <p style={{ marginTop: 8 }}>
+          <p>
             Aqui você encontra informações gerais sobre o seu ambiente: alunos,
             perguntas, ranking e configurações. Use os atalhos ao lado para
             navegar rapidamente.
           </p>
 
-          <ul style={{ marginTop: 16, lineHeight: 1.8 }}>
+          <ul className={styles.overviewLinks}>
             <li>
               <Link href="/dashboard/alunos">Gerenciar alunos</Link>
             </li>
@@ -42,15 +50,16 @@ export default function DashboardPage() {
           </ul>
         </section>
 
-        <aside className={styles.panel} style={{ padding: 28 }}>
+        <aside className={`${styles.panel} ${styles.overviewCard} ${styles.overviewShortcutCard}`}>
           <h2>Atalhos</h2>
-          <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-            <Link className={`${styles.pressable} ${styles.primaryButton}`} href="/dashboard/alunos">Alunos</Link>
-            <Link className={`${styles.pressable} ${styles.primaryButton}`} href="/dashboard/perguntas">Perguntas</Link>
-            <Link className={`${styles.pressable} ${styles.primaryButton}`} href="/dashboard/ranking">Ranking</Link>
+          <div className={styles.overviewShortcutList}>
+            <Link className={`${styles.pressable} ${styles.overviewShortcutButton}`} href="/dashboard/alunos">Alunos</Link>
+            <Link className={`${styles.pressable} ${styles.overviewShortcutButton}`} href="/dashboard/perguntas">Perguntas</Link>
+            <Link className={`${styles.pressable} ${styles.overviewShortcutButton}`} href="/dashboard/ranking">Ranking</Link>
           </div>
+          <div aria-hidden="true" className={styles.overviewEmoji}>🚀 🎮 ✨</div>
         </aside>
       </div>
-    </>
+    </div>
   );
 }

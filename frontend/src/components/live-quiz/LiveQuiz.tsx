@@ -107,7 +107,7 @@ export function LiveQuiz() {
     void action("/jogo/responder/", {
       sessao_id: game.sessao_id,
       alternativa_id: alternativeId,
-      tempo_gasto_segundos: Math.max(0, (game.tempo_por_pergunta ?? 60) - timeRemaining),
+      tempo_gasto_segundos: Math.max(0, (game.tempo_por_pergunta ?? 90) - timeRemaining),
     });
   }
 

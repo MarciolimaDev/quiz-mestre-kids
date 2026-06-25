@@ -18,6 +18,8 @@ type Turma = {
 type Aluno = {
   id: number;
   pontos?: number;
+  pontos_comportamento?: number;
+  pontos_quiz?: number;
   nome: string;
   apelido: string;
   avatar: number | null;
@@ -53,6 +55,8 @@ export function StudentManager() {
   const [anoLetivo, setAnoLetivo] = useState(CURRENT_YEAR);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pointInputs, setPointInputs] = useState<Record<number, string>>({});
+  const [updatingPointsId, setUpdatingPointsId] = useState<number | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
@@ -137,16 +141,33 @@ export function StudentManager() {
     }
   }
 
-  async function changePoints(student: Aluno, delta: number) {
+  function pointAmount(studentId: number) {
+    const rawValue = pointInputs[studentId]?.trim() || "1";
+    const parsed = Number(rawValue.replace(",", "."));
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return Math.trunc(parsed);
+  }
+
+  async function changePoints(student: Aluno, operation: "add" | "remove") {
+    const amount = pointAmount(student.id);
+    if (!amount) {
+      setMessage({ type: "error", text: "Informe uma quantidade de pontos maior que zero." });
+      return;
+    }
+    const delta = operation === "add" ? amount : -amount;
     try {
+      setUpdatingPointsId(student.id);
       const result = await apiFetch<{ id: number; pontos: number }>(`/alunos/${student.id}/pontos/`, {
         method: "POST",
         body: JSON.stringify({ delta }),
       });
       setAlunos((current) => current.map((s) => (s.id === student.id ? { ...s, pontos: result.pontos } : s)));
-      setMessage({ type: "success", text: "Pontos atualizados." });
+      setPointInputs((current) => ({ ...current, [student.id]: "" }));
+      setMessage({ type: "success", text: delta > 0 ? `${amount} ponto(s) adicionados.` : `${amount} ponto(s) retirados.` });
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Erro ao atualizar pontos." });
+    } finally {
+      setUpdatingPointsId(null);
     }
   }
 
@@ -184,7 +205,7 @@ export function StudentManager() {
 
         <section className={styles.listCard}>
           <div className={styles.listHeader}><div><h2>Alunos cadastrados</h2><p>Participantes disponíveis para as rodadas.</p></div><div className={styles.filters}><input aria-label="Buscar alunos" onChange={(event) => setBusca(event.target.value)} placeholder="Buscar aluno..." value={busca} /><select aria-label="Filtrar por turma" onChange={(event) => setFiltroTurma(event.target.value)} value={filtroTurma}><option value="">Todas as turmas</option>{turmas.map((schoolClass) => <option key={schoolClass.id} value={schoolClass.id}>{schoolClass.label}</option>)}</select></div></div>
-          {loading ? <p className={styles.empty}>Carregando alunos...</p> : filteredStudents.length === 0 ? <p className={styles.empty}>Nenhum aluno encontrado.</p> : <div className={styles.studentGrid}>{filteredStudents.map((student) => { const image = student.avatar_imagem || student.avatar_url; return <article key={student.id}><div className={styles.avatar} style={image ? { backgroundImage: `url(${JSON.stringify(image)})` } : undefined}>{!image && initials(student.nome)}</div><div className={styles.studentInfo}><div><h3>{student.nome}</h3><span className={student.ativo ? styles.active : styles.inactive}>{student.ativo ? "Ativo" : "Inativo"}</span></div><p>{student.apelido || "Sem apelido"}</p><small>{student.turma_label}</small><div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}><button onClick={() => changePoints(student, -1)} type="button">−</button><strong style={{ minWidth: 36, textAlign: "center" }}>{student.pontos ?? 0}</strong><button onClick={() => changePoints(student, 1)} type="button">+</button></div></div><button aria-label={`Excluir ${student.nome}`} onClick={() => deleteStudent(student)} type="button">Excluir</button></article>; })}</div>}
+          {loading ? <p className={styles.empty}>Carregando alunos...</p> : filteredStudents.length === 0 ? <p className={styles.empty}>Nenhum aluno encontrado.</p> : <div className={styles.studentGrid}>{filteredStudents.map((student) => { const image = student.avatar_imagem || student.avatar_url; const isUpdatingPoints = updatingPointsId === student.id; return <article key={student.id}><div className={styles.avatar} style={image ? { backgroundImage: `url(${JSON.stringify(image)})` } : undefined}>{!image && initials(student.nome)}</div><div className={styles.studentInfo}><div><h3>{student.nome}</h3><span className={student.ativo ? styles.active : styles.inactive}>{student.ativo ? "Ativo" : "Inativo"}</span></div><p>{student.apelido || "Sem apelido"}</p><small>{student.turma_label}</small><div className={styles.pointsEditor}><div><span>Pontuação</span><strong>{student.pontos ?? 0}</strong></div><label><span>Pontos</span><input aria-label={`Quantidade de pontos para ${student.nome}`} inputMode="numeric" min={1} onChange={(event) => setPointInputs((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="Ex.: 5" type="number" value={pointInputs[student.id] ?? ""} /></label><div><button disabled={isUpdatingPoints} onClick={() => changePoints(student, "remove")} title="Retirar pontos por mau comportamento" type="button">Retirar</button><button disabled={isUpdatingPoints} onClick={() => changePoints(student, "add")} title="Adicionar pontos por bom comportamento" type="button">Adicionar</button></div></div></div><button aria-label={`Excluir ${student.nome}`} onClick={() => deleteStudent(student)} type="button">Excluir</button></article>; })}</div>}
         </section>
       </div>
       {showAvatarModal && <AvatarPickerModal avatars={avatares} onClose={() => setShowAvatarModal(false)} onConfirm={(selectedId) => { setAvatarId(selectedId); setShowAvatarModal(false); }} selectedId={avatarId} />}
