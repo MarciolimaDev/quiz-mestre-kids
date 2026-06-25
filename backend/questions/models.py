@@ -1,5 +1,7 @@
 from django.db import models
 
+from core.upload_paths import question_image_upload_path
+
 
 class Materia(models.Model):
     nome = models.CharField(max_length=100, unique=True, verbose_name="matéria")
@@ -32,7 +34,7 @@ class Pergunta(models.Model):
     )
     enunciado = models.TextField()
     imagem = models.ImageField(
-        upload_to="pergunta_imagens/", null=True, blank=True, verbose_name="imagem"
+        upload_to=question_image_upload_path, null=True, blank=True, verbose_name="imagem"
     )
     nivel = models.CharField(max_length=10, choices=Nivel.choices, default=Nivel.FACIL)
     ordem = models.PositiveSmallIntegerField(default=1)

@@ -1,14 +1,16 @@
 from django.conf import settings
+from uuid import uuid4
+
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):
-    help = "Testa o storage padrão de media salvando e apagando um arquivo pequeno."
+    help = "Testa o storage padrão de media salvando um arquivo pequeno."
 
     def handle(self, *args, **options):
-        name = "storage-health/check.txt"
+        name = f"storage-health/{uuid4().hex}.txt"
         content = ContentFile(b"ok\n")
 
         self.stdout.write(f"Storage backend: {default_storage.__class__.__module__}.{default_storage.__class__.__name__}")
@@ -21,11 +23,8 @@ class Command(BaseCommand):
         self.stdout.write(f"MEDIA_URL: {getattr(settings, 'MEDIA_URL', None)}")
 
         try:
-            if default_storage.exists(name):
-                default_storage.delete(name)
             saved_name = default_storage.save(name, content)
             url = default_storage.url(saved_name)
-            default_storage.delete(saved_name)
         except Exception as exc:
             raise CommandError(f"Falha ao salvar arquivo no storage: {exc.__class__.__name__}: {exc}") from exc
 

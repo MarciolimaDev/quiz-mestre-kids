@@ -1,9 +1,11 @@
 from django.db import models
 
+from core.upload_paths import avatar_upload_path
+
 
 class Avatar(models.Model):
     nome = models.CharField(max_length=80, unique=True)
-    imagem = models.ImageField(upload_to="avatars/%Y/%m/")
+    imagem = models.ImageField(upload_to=avatar_upload_path)
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 

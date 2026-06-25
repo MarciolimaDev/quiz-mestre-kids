@@ -264,7 +264,7 @@ if USE_REMOTE_MEDIA_STORAGE:
     AWS_S3_ENDPOINT_URL = R2_ENDPOINT
     AWS_S3_ADDRESSING_STYLE = os.getenv("AWS_S3_ADDRESSING_STYLE", "path")
     AWS_DEFAULT_ACL = os.getenv("AWS_DEFAULT_ACL") or None
-    AWS_S3_FILE_OVERWRITE = False
+    AWS_S3_FILE_OVERWRITE = env_bool("AWS_S3_FILE_OVERWRITE", True)
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': os.getenv('AWS_S3_CACHE_CONTROL', 'max-age=86400'),
     }

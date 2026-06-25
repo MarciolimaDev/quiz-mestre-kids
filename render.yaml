@@ -37,6 +37,8 @@ services:
         value: auto
       - key: AWS_S3_ADDRESSING_STYLE
         value: path
+      - key: AWS_S3_FILE_OVERWRITE
+        value: "True"
       - key: AWS_S3_CUSTOM_DOMAIN
         sync: false
       - key: AWS_LOCATION

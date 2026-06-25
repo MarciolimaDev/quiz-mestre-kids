@@ -27,6 +27,7 @@ AWS_ACCESS_KEY_ID=<access-key-do-r2>
 AWS_SECRET_ACCESS_KEY=<secret-key-do-r2>
 AWS_S3_REGION=auto
 AWS_S3_ADDRESSING_STYLE=path
+AWS_S3_FILE_OVERWRITE=True
 AWS_QUERYSTRING_AUTH=False
 ```
 
@@ -48,6 +49,7 @@ Se o upload retornar erro `500`, confira no Render se:
 
 - `AWS_S3_REGION` ou `AWS_S3_REGION_NAME` está exatamente como `auto`.
 - `AWS_S3_ADDRESSING_STYLE` está como `path`.
+- `AWS_S3_FILE_OVERWRITE` está como `True` para evitar `HeadObject` antes do upload.
 - `R2_ENDPOINT` não tem o nome do bucket no final.
 - A API Token do R2 tem permissão de escrita no bucket `quiz-kids`.
 
