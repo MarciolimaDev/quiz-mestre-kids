@@ -36,7 +36,7 @@ services:
       - key: AWS_S3_REGION
         value: auto
       - key: AWS_S3_ADDRESSING_STYLE
-        value: virtual
+        value: path
       - key: AWS_S3_CUSTOM_DOMAIN
         sync: false
       - key: AWS_LOCATION
