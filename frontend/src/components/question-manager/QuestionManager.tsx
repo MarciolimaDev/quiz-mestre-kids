@@ -50,6 +50,8 @@ export function QuestionManager() {
   const [ativa, setAtiva] = useState(true);
   const [alternativas, setAlternativas] = useState<Alternativa[]>(emptyAlternatives);
   const [imagemFile, setImagemFile] = useState<File | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<Pergunta | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [busca, setBusca] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -104,6 +106,40 @@ export function QuestionManager() {
     setAtiva(true);
     setAlternativas(emptyAlternatives());
     setImagemFile(null);
+    setEditingQuestion(null);
+    setFileInputKey((current) => current + 1);
+  }
+
+  function startEditQuestion(question: Pergunta) {
+    setEditingQuestion(question);
+    setQuizId(String(question.quiz));
+    setMateriaId(String(question.materia));
+    setEnunciado(question.enunciado);
+    setNivel(question.nivel);
+    setAtiva(question.ativa);
+    setAlternativas(
+      [...question.alternativas]
+        .sort((a, b) => a.ordem - b.ordem)
+        .map((alternative) => ({
+          id: alternative.id,
+          texto: alternative.texto,
+          correta: alternative.correta,
+          ordem: alternative.ordem,
+        })),
+    );
+    setImagemFile(null);
+    setFileInputKey((current) => current + 1);
+    setMessage({ type: "success", text: "Modo edição ativado. Altere os dados e salve a pergunta." });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function alternativesPayload() {
+    return alternativas.map((alternative) => ({
+      id: alternative.id,
+      texto: alternative.texto.trim(),
+      correta: alternative.correta,
+      ordem: alternative.ordem,
+    }));
   }
 
   async function createSubject() {
@@ -135,7 +171,9 @@ export function QuestionManager() {
     }
     try {
       setSaving(true);
-      let created: Pergunta;
+      let saved: Pergunta;
+      const endpoint = editingQuestion ? `/perguntas/${editingQuestion.id}/` : "/perguntas/";
+      const method = editingQuestion ? "PATCH" : "POST";
       if (imagemFile) {
         const form = new FormData();
         form.append("quiz", String(Number(quizId)));
@@ -146,38 +184,28 @@ export function QuestionManager() {
         form.append("imagem", imagemFile);
         form.append(
           "alternativas",
-          JSON.stringify(
-            alternativas.map((alternative) => ({
-              texto: alternative.texto.trim(),
-              correta: alternative.correta,
-              ordem: alternative.ordem,
-            })),
-          ),
+          JSON.stringify(alternativesPayload()),
         );
-        created = await api<Pergunta>("/perguntas/", {
-          method: "POST",
+        saved = await api<Pergunta>(endpoint, {
+          method,
           body: form,
         });
       } else {
-        created = await api<Pergunta>("/perguntas/", {
-          method: "POST",
+        saved = await api<Pergunta>(endpoint, {
+          method,
           body: JSON.stringify({
             quiz: Number(quizId),
             materia: Number(materiaId),
             enunciado: enunciado.trim(),
             nivel,
             ativa,
-            alternativas: alternativas.map((alternative) => ({
-              texto: alternative.texto.trim(),
-              correta: alternative.correta,
-              ordem: alternative.ordem,
-            })),
+            alternativas: alternativesPayload(),
           }),
         });
       }
-      setPerguntas((current) => [...current, created]);
+      setPerguntas((current) => editingQuestion ? current.map((question) => question.id === saved.id ? saved : question) : [...current, saved]);
       resetForm();
-      setMessage({ type: "success", text: "Pergunta salva no banco de dados." });
+      setMessage({ type: "success", text: editingQuestion ? "Pergunta atualizada." : "Pergunta salva no banco de dados." });
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Erro ao salvar pergunta." });
     } finally {
@@ -218,7 +246,7 @@ export function QuestionManager() {
 
       <div className={styles.contentGrid}>
         <form className={styles.formCard} onSubmit={submitQuestion}>
-          <div className={styles.cardTitle}><Icon name="quiz" size={24} /><div><h2>Nova pergunta</h2><p>Os dados serão salvos no Django.</p></div></div>
+          <div className={styles.cardTitle}><Icon name="quiz" size={24} /><div><h2>{editingQuestion ? "Editar pergunta" : "Nova pergunta"}</h2><p>{editingQuestion ? "Altere nível, enunciado, imagem e alternativas." : "Os dados serão salvos no Django."}</p></div></div>
 
           {quizzes.length === 0 && <div className={styles.warning}><span>Nenhum quiz cadastrado.</span><button onClick={() => setShowQuizModal(true)} type="button">Criar primeiro quiz</button></div>}
 
@@ -231,7 +259,7 @@ export function QuestionManager() {
           <div className={styles.newSubject}><input aria-label="Nome da nova matéria" onChange={(event) => setNovaMateria(event.target.value)} placeholder="Ou cadastre uma nova matéria" value={novaMateria} /><button onClick={createSubject} type="button"><Icon name="add" size={18} /> Adicionar</button></div>
 
           <label>Enunciado<textarea maxLength={1000} onChange={(event) => setEnunciado(event.target.value)} placeholder="Digite a pergunta..." required rows={3} value={enunciado} /></label>
-          <label>Imagem (opcional)<input onChange={(event) => setImagemFile(event.target.files?.[0] ?? null)} type="file" accept="image/*" /></label>
+          <label>Imagem (opcional)<input key={fileInputKey} onChange={(event) => setImagemFile(event.target.files?.[0] ?? null)} type="file" accept="image/*" />{editingQuestion?.imagem && !imagemFile && <small>Imagem atual mantida se você não escolher outra.</small>}</label>
 
           <fieldset className={styles.alternatives}>
             <legend>
@@ -247,7 +275,10 @@ export function QuestionManager() {
           </fieldset>
 
           <label className={styles.activeToggle}><input checked={ativa} onChange={(event) => setAtiva(event.target.checked)} type="checkbox" /><span /> Pergunta ativa</label>
-          <button className={styles.saveButton} disabled={saving || !quizzes.length} type="submit">{saving ? "Salvando..." : "Salvar pergunta"}<Icon name="check" size={21} /></button>
+          <div className={styles.formFooter}>
+            {editingQuestion && <button className={styles.cancelEditButton} onClick={resetForm} type="button">Cancelar edição</button>}
+            <button className={styles.saveButton} disabled={saving || !quizzes.length} type="submit">{saving ? "Salvando..." : editingQuestion ? "Atualizar pergunta" : "Salvar pergunta"}<Icon name="check" size={21} /></button>
+          </div>
         </form>
 
         <section className={styles.listCard}>
@@ -271,7 +302,10 @@ export function QuestionManager() {
                       <span className={styles.level}>{question.nivel}</span>
                       <span className={question.ativa ? styles.active : styles.inactive}>{question.ativa ? "Ativa" : "Inativa"}</span>
                     </div>
-                    <button aria-label="Excluir pergunta" onClick={() => deleteQuestion(question)} type="button">Excluir</button>
+                    <div className={styles.questionActions}>
+                      <button aria-label="Editar pergunta" onClick={() => startEditQuestion(question)} type="button">Editar</button>
+                      <button aria-label="Excluir pergunta" onClick={() => deleteQuestion(question)} type="button">Excluir</button>
+                    </div>
                   </div>
                   <h3>{question.enunciado}</h3>
                   {question.imagem && (

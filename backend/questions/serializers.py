@@ -136,8 +136,25 @@ class PerguntaSerializer(serializers.ModelSerializer):
         instance.full_clean()
         instance.save()
         if alternativas is not None:
-            instance.alternativas.all().delete()
-            Alternativa.objects.bulk_create(
-                Alternativa(pergunta=instance, **item) for item in alternativas
-            )
+            self._update_alternativas(instance, alternativas)
         return instance
+
+    def _update_alternativas(self, pergunta, alternativas):
+        existing = {alternative.id: alternative for alternative in pergunta.alternativas.all()}
+
+        # Avoid violating the conditional unique constraint while changing which
+        # answer is correct. Historical RespostaAluno rows keep their stored
+        # correctness/pontos values, but the alternative record is preserved.
+        pergunta.alternativas.filter(correta=True).update(correta=False)
+
+        for item in alternativas:
+            alternative_id = item.pop("id", None)
+            if alternative_id and alternative_id in existing:
+                alternative = existing[alternative_id]
+                alternative.texto = item["texto"]
+                alternative.ordem = item["ordem"]
+                alternative.correta = item["correta"]
+                alternative.full_clean()
+                alternative.save(update_fields=("texto", "ordem", "correta"))
+            else:
+                Alternativa.objects.create(pergunta=pergunta, **item)

@@ -4,8 +4,10 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from quizzes.models import Categoria, Quiz
 from accounts.models import User
+from quizzes.models import Categoria, Quiz, Turma
+from results.models import ParticipanteSessao, RespostaAluno, SessaoQuiz
+from students.models import Aluno
 
 from .models import Materia, Pergunta
 
@@ -80,6 +82,43 @@ class PerguntaApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Pergunta.objects.count(), 0)
+
+    def test_edita_pergunta_com_alternativa_ja_usada_em_resposta(self):
+        criada = self.client.post("/api/perguntas/", self.payload(), format="json")
+        pergunta = Pergunta.objects.get()
+        alternativas = list(pergunta.alternativas.order_by("ordem"))
+        turma = Turma.objects.create(serie="4º ano", nome="A", ano_letivo=2026)
+        aluno = Aluno.objects.create(nome="Luiz João", turma=turma)
+        sessao = SessaoQuiz.objects.create(quiz=self.quiz, turma=turma)
+        participante = ParticipanteSessao.objects.create(sessao=sessao, aluno=aluno)
+        RespostaAluno.objects.create(
+            participante=participante,
+            pergunta=pergunta,
+            alternativa=alternativas[0],
+        )
+
+        response = self.client.patch(
+            f"/api/perguntas/{criada.data['id']}/",
+            {
+                "quiz": self.quiz.id,
+                "materia": self.materia.id,
+                "enunciado": "Quanto é 3 + 3?",
+                "nivel": "medio",
+                "ativa": True,
+                "alternativas": [
+                    {"id": alternativas[0].id, "texto": "6", "correta": False, "ordem": 1},
+                    {"id": alternativas[1].id, "texto": "7", "correta": True, "ordem": 2},
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        pergunta.refresh_from_db()
+        self.assertEqual(pergunta.nivel, "medio")
+        self.assertEqual(pergunta.alternativas.count(), 2)
+        self.assertEqual(pergunta.alternativas.get(correta=True).texto, "7")
+        self.assertEqual(RespostaAluno.objects.count(), 1)
 
     def test_lista_e_exclui_pergunta(self):
         criada = self.client.post("/api/perguntas/", self.payload(), format="json")
