@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.db.models.functions import Lower
 from quizzes.models import Quiz
 
-from .models import SessaoQuiz
+from .models import QUESTION_POINTS_BY_LEVEL, SessaoQuiz
 
 
 QUESTION_TIME_SECONDS = 90
@@ -49,18 +49,78 @@ def next_participant(sessao):
 
 
 def available_quizzes():
-    return [
-        {
-            "id": quiz.id,
-            "titulo": quiz.titulo,
-            "turma": str(quiz.turma) if quiz.turma else None,
-        }
-        for quiz in Quiz.objects.filter(
+    quizzes = (
+        Quiz.objects.filter(
             ativo=True,
             turma__isnull=False,
             perguntas__ativa=True,
-        ).select_related("turma").distinct()
+        )
+        .select_related("turma")
+        .prefetch_related("perguntas__materia")
+        .distinct()
+    )
+    level_options = [
+        {"value": value, "label": label, "pontos": QUESTION_POINTS_BY_LEVEL[value]}
+        for value, label in [
+            ("facil", "Fácil"),
+            ("medio", "Médio"),
+            ("dificil", "Difícil"),
+        ]
     ]
+    options = []
+    for quiz in quizzes:
+        perguntas = [pergunta for pergunta in quiz.perguntas.all() if pergunta.ativa]
+        materias_by_id = {}
+        for pergunta in perguntas:
+            if not pergunta.materia_id:
+                continue
+            materia = materias_by_id.setdefault(
+                pergunta.materia_id,
+                {
+                    "id": pergunta.materia_id,
+                    "nome": pergunta.materia.nome,
+                    "nivel_values": set(),
+                },
+            )
+            materia["nivel_values"].add(pergunta.nivel)
+        materias = []
+        for materia in sorted(materias_by_id.values(), key=lambda item: item["nome"].casefold()):
+            materias.append(
+                {
+                    "id": materia["id"],
+                    "nome": materia["nome"],
+                    "niveis": [
+                        {
+                            **option,
+                            "quantidade": sum(
+                                1
+                                for pergunta in perguntas
+                                if pergunta.materia_id == materia["id"] and pergunta.nivel == option["value"]
+                            ),
+                        }
+                        for option in level_options
+                        if option["value"] in materia["nivel_values"]
+                    ],
+                }
+            )
+        niveis = [
+            {
+                **option,
+                "quantidade": sum(1 for pergunta in perguntas if pergunta.nivel == option["value"]),
+            }
+            for option in level_options
+            if any(pergunta.nivel == option["value"] for pergunta in perguntas)
+        ]
+        options.append(
+            {
+                "id": quiz.id,
+                "titulo": quiz.titulo,
+                "turma": str(quiz.turma) if quiz.turma else None,
+                "materias": materias,
+                "niveis": niveis,
+            }
+        )
+    return options
 
 
 def build_game_state(request, sessao=None):
@@ -138,7 +198,7 @@ def build_game_state(request, sessao=None):
             "titulo": sessao.quiz.titulo,
             "categoria": sessao.quiz.categoria.nome,
             "turma": str(sessao.turma),
-            "pontos_por_acerto": sessao.quiz.pontos_por_acerto,
+            "pontos_por_acerto": QUESTION_POINTS_BY_LEVEL.get(pergunta.nivel, 0) if pergunta else 0,
         },
         "pergunta": question_data,
         "pergunta_numero": current_number,

@@ -3,6 +3,13 @@ from django.db import models
 from django.db.models import F, Q
 
 
+QUESTION_POINTS_BY_LEVEL = {
+    "facil": 10,
+    "medio": 15,
+    "dificil": 20,
+}
+
+
 class SessaoQuiz(models.Model):
     class Status(models.TextChoices):
         AGUARDANDO = "aguardando", "Aguardando"
@@ -159,9 +166,7 @@ class RespostaAluno(models.Model):
 
     def save(self, *args, **kwargs):
         self.correta = self.alternativa.correta
-        self.pontos = (
-            self.participante.sessao.quiz.pontos_por_acerto if self.correta else 0
-        )
+        self.pontos = QUESTION_POINTS_BY_LEVEL.get(self.pergunta.nivel, 0) if self.correta else 0
         self.full_clean()
         resultado = super().save(*args, **kwargs)
         Resultado.atualizar_para(self.participante)

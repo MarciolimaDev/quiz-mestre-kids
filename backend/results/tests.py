@@ -8,7 +8,7 @@ from questions.models import Alternativa, Materia, Pergunta
 from quizzes.models import Categoria, Quiz, Turma
 from students.models import Aluno
 
-from .models import ParticipanteSessao, RespostaAluno, Resultado, SessaoQuiz
+from .models import QUESTION_POINTS_BY_LEVEL, ParticipanteSessao, RespostaAluno, Resultado, SessaoQuiz
 
 
 class FluxoQuizTests(TestCase):
@@ -111,6 +111,32 @@ class FluxoQuizTests(TestCase):
                 alternativa=outra_alternativa,
             )
 
+    def test_pontuacao_depende_do_nivel_da_pergunta(self):
+        for index, (nivel, pontos) in enumerate(QUESTION_POINTS_BY_LEVEL.items(), start=1):
+            with self.subTest(nivel=nivel):
+                pergunta = Pergunta.objects.create(
+                    quiz=self.quiz,
+                    materia=self.pergunta.materia,
+                    enunciado=f"Pergunta {nivel}",
+                    nivel=nivel,
+                    ordem=10 + index,
+                )
+                correta = Alternativa.objects.create(
+                    pergunta=pergunta,
+                    texto="Resposta correta",
+                    correta=True,
+                    ordem=1,
+                )
+                participante = self.criar_participante(nome=f"Aluno {nivel}")
+
+                resposta = RespostaAluno.objects.create(
+                    participante=participante,
+                    pergunta=pergunta,
+                    alternativa=correta,
+                )
+
+                self.assertEqual(resposta.pontos, pontos)
+
 
 class GameApiTests(APITestCase):
     def setUp(self):
@@ -211,3 +237,34 @@ class GameApiTests(APITestCase):
         self.assertEqual(len(sessao.ordem_perguntas), 2)
         self.assertEqual(len(set(sessao.ordem_perguntas)), 2)
         self.assertEqual(set(sessao.ordem_perguntas), {self.pergunta1.id, self.pergunta2.id})
+
+    def test_inicio_filtra_perguntas_por_materia_e_nivel(self):
+        outra_materia = Materia.objects.create(nome="PortuguÃªs API")
+        pergunta_portugues = Pergunta.objects.create(
+            quiz=self.quiz,
+            materia=outra_materia,
+            enunciado="Qual palavra estÃ¡ correta?",
+            nivel="medio",
+            ordem=3,
+        )
+        Alternativa.objects.create(
+            pergunta=pergunta_portugues,
+            texto="Casa",
+            correta=True,
+            ordem=1,
+        )
+        Alternativa.objects.create(pergunta=pergunta_portugues, texto="Caza", ordem=2)
+
+        response = self.client.post(
+            "/api/jogo/iniciar/",
+            {
+                "quiz_id": self.quiz.id,
+                "materia_id": outra_materia.id,
+                "nivel": "medio",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["pergunta"]["id"], pergunta_portugues.id)
+        self.assertEqual(response.data["quiz"]["pontos_por_acerto"], 15)

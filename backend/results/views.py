@@ -40,12 +40,25 @@ class StartGameView(APIView):
         )
         if not quiz.turma_id:
             return Response({"detail": "O quiz precisa estar vinculado a uma turma."}, status=status.HTTP_400_BAD_REQUEST)
-        perguntas = list(quiz.perguntas.filter(ativa=True).order_by("ordem", "id"))
+        perguntas_queryset = quiz.perguntas.filter(ativa=True).order_by("ordem", "id")
+        materia_id = request.data.get("materia_id")
+        nivel = request.data.get("nivel")
+        if materia_id:
+            perguntas_queryset = perguntas_queryset.filter(materia_id=materia_id)
+        if nivel:
+            perguntas_queryset = perguntas_queryset.filter(nivel=nivel)
+        perguntas = list(perguntas_queryset)
         if not perguntas:
             return Response({"detail": "O quiz não possui perguntas ativas."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            quantidade_perguntas = int(request.data.get("quantidade_perguntas") or quiz.quantidade_perguntas)
+        except (TypeError, ValueError):
+            return Response({"detail": "Informe uma quantidade de perguntas valida."}, status=status.HTTP_400_BAD_REQUEST)
+        if quantidade_perguntas < 1:
+            return Response({"detail": "A quantidade de perguntas deve ser maior que zero."}, status=status.HTTP_400_BAD_REQUEST)
         if quiz.embaralhar_perguntas:
             random.shuffle(perguntas)
-        perguntas = perguntas[: quiz.quantidade_perguntas]
+        perguntas = perguntas[:quantidade_perguntas]
         pergunta = perguntas[0]
         now = timezone.now()
         SessaoQuiz.objects.filter(status=SessaoQuiz.Status.EM_ANDAMENTO).update(
