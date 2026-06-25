@@ -35,9 +35,9 @@ urlpatterns = [
     path('api/', include('results.urls')),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG and not settings.USE_REMOTE_MEDIA_STORAGE:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-elif settings.MEDIA_ROOT:
+elif settings.MEDIA_ROOT and not settings.USE_REMOTE_MEDIA_STORAGE:
     # Adequado para uma instância pequena com disco persistente no Render.
     # Para escalar horizontalmente, use um storage de objetos.
     urlpatterns += [

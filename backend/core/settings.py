@@ -31,6 +31,10 @@ def env_list(name, default=""):
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def clean_domain(value):
+    return value.replace("https://", "", 1).replace("http://", "", 1).strip().rstrip("/") if value else None
+
+
 DEBUG = env_bool("DEBUG", True)
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -54,6 +58,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
+    'storages',
     'accounts',
     'quizzes',
     'questions',
@@ -157,15 +162,14 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE_BACKEND = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    if not DEBUG
+    else "django.contrib.staticfiles.storage.StaticFilesStorage"
+)
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {
-        "BACKEND": (
-            "whitenoise.storage.CompressedManifestStaticFilesStorage"
-            if not DEBUG
-            else "django.contrib.staticfiles.storage.StaticFilesStorage"
-        ),
-    },
+    "staticfiles": {"BACKEND": STATICFILES_STORAGE_BACKEND},
 }
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS") or [
@@ -233,31 +237,43 @@ SIMPLE_JWT = {
 
 
 # Cloud / Media storage (Cloudflare R2 / S3-compatible)
-# Use local filesystem in DEBUG; in production set USE_CLOUDFLARE_R2=true
+# Use local filesystem by default; in production set USE_CLOUDFLARE_R2=true
 USE_CLOUDFLARE_R2 = env_bool("USE_CLOUDFLARE_R2", False)
 R2_ENDPOINT = os.getenv("R2_ENDPOINT")  # e.g. https://<account>.r2.cloudflarestorage.com
 R2_BUCKET = os.getenv("R2_BUCKET")  # e.g. quiz-kids
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION", "")
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION") or os.getenv("AWS_S3_REGION_NAME") or "auto"
 AWS_S3_SIGNATURE_VERSION = os.getenv("AWS_S3_SIGNATURE_VERSION", "s3v4")
+AWS_S3_CUSTOM_DOMAIN = clean_domain(os.getenv("AWS_S3_CUSTOM_DOMAIN"))
+AWS_LOCATION = os.getenv("AWS_LOCATION", "").strip("/")
+AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", False)
+USE_REMOTE_MEDIA_STORAGE = USE_CLOUDFLARE_R2 or bool(R2_ENDPOINT and R2_BUCKET)
 
-# Default to filesystem storage for development
-DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+if USE_REMOTE_MEDIA_STORAGE:
+    if not R2_ENDPOINT:
+        raise ImproperlyConfigured("Defina R2_ENDPOINT para usar Cloudflare R2.")
+    if not R2_BUCKET:
+        raise ImproperlyConfigured("Defina R2_BUCKET para usar Cloudflare R2.")
+    if not AWS_ACCESS_KEY_ID:
+        raise ImproperlyConfigured("Defina AWS_ACCESS_KEY_ID para usar Cloudflare R2.")
+    if not AWS_SECRET_ACCESS_KEY:
+        raise ImproperlyConfigured("Defina AWS_SECRET_ACCESS_KEY para usar Cloudflare R2.")
 
-if USE_CLOUDFLARE_R2 or (R2_ENDPOINT and R2_BUCKET):
-    # django-storages S3 backend configuration
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
     AWS_STORAGE_BUCKET_NAME = R2_BUCKET
     AWS_S3_ENDPOINT_URL = R2_ENDPOINT
-    # boto3 uses these credentials when provided
-    # leave region empty if not required by R2
-    # allow overriding addressing style if needed (virtual or path)
     AWS_S3_ADDRESSING_STYLE = os.getenv("AWS_S3_ADDRESSING_STYLE", "virtual")
+    AWS_DEFAULT_ACL = os.getenv("AWS_DEFAULT_ACL") or None
+    AWS_S3_FILE_OVERWRITE = False
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': os.getenv('AWS_S3_CACHE_CONTROL', 'max-age=86400'),
     }
 
-    # Optional: public URL/domain override
-    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN')
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    }
+
+    if AWS_S3_CUSTOM_DOMAIN:
+        media_prefix = f"{AWS_LOCATION}/" if AWS_LOCATION else ""
+        MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN.rstrip('/')}/{media_prefix}"
 

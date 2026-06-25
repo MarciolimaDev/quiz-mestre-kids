@@ -23,13 +23,27 @@ services:
         generateValue: true
       - key: DEBUG
         value: "False"
-      - key: MEDIA_ROOT
-        value: /opt/render/project/src/backend/media
+      - key: USE_CLOUDFLARE_R2
+        value: "True"
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_S3_REGION
+        value: auto
+      - key: AWS_S3_ADDRESSING_STYLE
+        value: virtual
+      - key: AWS_S3_CUSTOM_DOMAIN
+        sync: false
+      - key: AWS_LOCATION
+        value: ""
+      - key: AWS_QUERYSTRING_AUTH
+        value: "False"
       - key: SECURE_SSL_REDIRECT
         value: "True"
       - key: WEB_CONCURRENCY
         value: "4"
-    disk:
-      name: quizmestrekids-media
-      mountPath: /opt/render/project/src/backend/media
-      sizeGB: 1
