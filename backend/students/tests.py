@@ -68,6 +68,13 @@ class AlunoApiTests(APITestCase):
         self.assertEqual(Avatar.objects.get().nome, "Astronauta azul")
         self.assertIn("/media/avatars/", response.data["imagem"])
 
+    def test_rotas_aceitam_url_sem_barra_final(self):
+        alunos = self.client.get("/api/alunos")
+        avatares = self.client.get("/api/avatares")
+
+        self.assertEqual(alunos.status_code, status.HTTP_200_OK)
+        self.assertEqual(avatares.status_code, status.HTTP_200_OK)
+
     def test_cria_turma_pela_api(self):
         response = self.client.post(
             "/api/turmas/",

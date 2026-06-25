@@ -68,3 +68,10 @@ class PerguntaApiTests(APITestCase):
         self.assertEqual(listagem.status_code, status.HTTP_200_OK)
         self.assertEqual(len(listagem.data), 1)
         self.assertEqual(exclusao.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_rotas_aceitam_url_sem_barra_final(self):
+        materia = self.client.get("/api/materias")
+        perguntas = self.client.get("/api/perguntas")
+
+        self.assertEqual(materia.status_code, status.HTTP_200_OK)
+        self.assertEqual(perguntas.status_code, status.HTTP_200_OK)
