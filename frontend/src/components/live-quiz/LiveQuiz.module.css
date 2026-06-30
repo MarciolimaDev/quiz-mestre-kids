@@ -18,7 +18,7 @@
 .timerExpired { border-color: #ba1a1a; background: #ffdad6; color: #93000a; }
 .stageGrid { display: grid; grid-template-columns: 215px minmax(0,1fr) 245px; gap: 22px; }
 .playerCard, .questionCard, .rankingCard { border: 2px solid #d5e3fc; background: rgba(255,255,255,.94); box-shadow: 0 10px 28px rgba(35,49,68,.12); }
-.playerCard { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 525px; padding: 22px 15px; border-radius: 30px; text-align: center; }
+.playerCard { display: flex; height: min(680px, calc(100vh - 190px)); min-height: 525px; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 22px 15px; border-radius: 30px; text-align: center; }
 .currentPlayer { display: flex; flex-direction: column; align-items: center; }
 .playerLabel { margin-bottom: 17px; color: #434655; font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; }
 .avatar { position: relative; width: 112px; height: 112px; overflow: hidden; border: 5px solid #004ac6; border-radius: 50%; box-shadow: 0 0 0 8px #dce9ff; }
@@ -28,9 +28,9 @@
 .playerCard p { margin: 0; color: #434655; font-size: 13px; }
 .score { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; padding: 7px 12px; border-radius: 999px; background: #e9ddff; color: #5516be; font-size: 12px; font-weight: 700; }
 .score svg { fill: rgba(99,46,205,.13); }
-.studentPicker { width: 100%; margin-top: 18px; padding-top: 14px; border-top: 1px solid #d5e3fc; }
+.studentPicker { width: 100%; min-height: 0; margin-top: 18px; padding-top: 14px; border-top: 1px solid #d5e3fc; }
 .studentPicker > span { display: block; margin-bottom: 9px; color: #434655; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-.studentPicker > div { display: flex; justify-content: center; gap: 4px; }
+.studentPicker > div { display: flex; max-height: 120px; flex-wrap: wrap; justify-content: center; gap: 4px; overflow-y: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
 .miniStudent, .miniStudentActive { position: relative; width: 35px; height: 35px; overflow: hidden; padding: 0; border: 2px solid transparent; border-radius: 50%; background: #d5e3fc; transition: border .18s, transform .18s; }
 .miniStudent img, .miniStudentActive img { object-fit: cover; }
 .miniStudent:hover { border-color: #6590ee; transform: translateY(-2px); }
@@ -62,12 +62,12 @@
 .nextQuestionButton { display: flex; min-height: 45px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; border: 0; border-bottom: 3px solid #8f3500; border-radius: 18px; background: #fd761a; color: #5c2400; font-size: 14px; font-weight: 700; transition: transform .18s, filter .18s; }
 .nextQuestionButton:hover { filter: brightness(1.04); transform: translateY(-1px); }
 .nextQuestionButton:disabled,.randomStudentButton:disabled { cursor: wait; opacity: .6; }
-.rankingCard { min-width: 0; min-height: 525px; padding: 22px 14px; border-radius: 30px; }
+.rankingCard { display: flex; height: min(680px, calc(100vh - 190px)); min-width: 0; min-height: 525px; flex-direction: column; overflow: hidden; padding: 22px 14px; border-radius: 30px; }
 .rankingHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 7px 16px; color: #004ac6; }
 .rankingHeader > div { display: flex; flex-direction: column; }
 .rankingHeader span { color: #434655; font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
 .rankingHeader h2 { margin: 1px 0 0; font-size: 25px; line-height: 1.1; }
-.rankingList { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.rankingList { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 10px; margin: 0; padding: 0 3px 4px 0; overflow-y: auto; list-style: none; scrollbar-width: thin; }
 .rankingList li { display: grid; grid-template-columns: 20px 40px minmax(0,1fr); min-height: 67px; align-items: center; gap: 8px; padding: 8px; border: 1px solid #c3c6d7; border-radius: 22px; background: #fff; box-shadow: 0 2px 5px rgba(35,49,68,.07); }
 .rankingList .rankingActive { border-color: #7d4ce7; background: #f7f2ff; box-shadow: 0 0 0 2px rgba(125,76,231,.1); }
 .rankPosition { color: #004ac6; font-size: 13px; font-weight: 700; text-align: center; }
@@ -133,7 +133,8 @@
   .timer span { font-size: 11px; }
   .timer strong { font-size: 28px; }
   .stageGrid { grid-template-columns: minmax(260px, 16%) minmax(0,1fr) minmax(290px, 19%); gap: 28px; }
-  .playerCard, .questionCard, .rankingCard { min-height: clamp(610px, 62vh, 740px); }
+  .playerCard, .questionCard, .rankingCard { min-height: min(740px, calc(100vh - 230px)); }
+  .playerCard, .rankingCard { height: min(740px, calc(100vh - 230px)); }
   .playerCard { padding: 30px 22px; }
   .playerLabel { margin-bottom: 22px; font-size: 13px; }
   .avatar { width: 138px; height: 138px; }
@@ -174,8 +175,8 @@
 
 @media (max-width: 1120px) {
   .stageGrid { grid-template-columns: 215px minmax(0,1fr); }
-  .rankingCard { grid-column: 1 / -1; min-height: auto; }
-  .rankingList { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); }
+  .rankingCard { grid-column: 1 / -1; height: auto; min-height: auto; }
+  .rankingList { display: grid; max-height: 330px; grid-template-columns: repeat(5,minmax(0,1fr)); }
   .rankingList li { grid-template-columns: 18px 36px minmax(0,1fr); }
   .rankAvatar { width: 36px; height: 36px; }
   .roundProgress { margin-right: 0; }
@@ -194,7 +195,7 @@
   .timer strong { font-size: 20px; }
   .stageGrid { grid-template-columns: 1fr; }
   .rankingCard { grid-column: auto; }
-  .playerCard { min-height: auto; align-items: stretch; padding: 14px 18px; border-radius: 22px; text-align: left; }
+  .playerCard { height: auto; min-height: auto; align-items: stretch; padding: 14px 18px; border-radius: 22px; text-align: left; }
   .currentPlayer { flex-direction: row; align-items: center; gap: 14px; }
   .playerLabel, .playerCard p, .score { display: none; }
   .avatar { width: 58px; height: 58px; border-width: 3px; box-shadow: 0 0 0 4px #dce9ff; }
